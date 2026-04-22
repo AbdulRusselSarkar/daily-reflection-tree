@@ -1,0 +1,484 @@
+{
+  "meta": {
+    "version": "1.0",
+    "title": "Daily Reflection Tree",
+    "description": "An end-of-day reflection tool that walks employees through three psychological axes in sequence. Fully deterministic — no LLM at runtime. Same answers always produce the same path and reflection.",
+    "axes": {
+      "axis1": {
+        "name": "Locus",
+        "description": "Internal vs External Locus of Control (Rotter, 1954) and Growth vs Fixed Mindset (Dweck, 2006). Does the employee see their own agency in today's events?",
+        "poles": {
+          "internal": "Victor — I navigate, adapt, and choose",
+          "external": "Victim — things happen to me"
+        }
+      },
+      "axis2": {
+        "name": "Orientation",
+        "description": "Contribution vs Entitlement Orientation (Organ, 1988; Campbell et al., 2004). Is the employee focused on what they gave or what they were owed?",
+        "poles": {
+          "contribution": "Contributor — I give regardless of what comes back",
+          "entitlement": "Entitled — I track what I deserve"
+        }
+      },
+      "axis3": {
+        "name": "Radius",
+        "description": "Altrocentric vs Self-Centric Radius of Concern (Maslow, 1969; Batson, 2011). How wide is the employee's circle of concern — just themselves, or extending to others?",
+        "poles": {
+          "altrocentric": "Altrocentric — others are included in my frame",
+          "selfcentric": "Self-Centric — my frame is primarily myself"
+        }
+      }
+    },
+    "nodeTypes": {
+      "start": "Opens the session. Auto-advances. No user input required.",
+      "question": "Presents 3–5 fixed options. Each option carries a signal that updates state. The employee's selection is stored as state.answers[nodeId].",
+      "decision": "Invisible routing node. Evaluates routing conditions against accumulated state. Auto-advances to the matching target. Never shown to the employee.",
+      "reflection": "Presents a reframe or insight tailored to the employee's path. May interpolate prior answers using {nodeId.answer} syntax. Employee reads and clicks Continue.",
+      "bridge": "A brief transitional statement between axes. Auto-advances. Keeps the conversation feeling like one flowing dialogue rather than three separate quizzes.",
+      "summary": "End-of-session synthesis. Interpolates axis dominant poles and prior answers. Employee reads their reflection.",
+      "end": "Closes the session warmly. Auto-advances."
+    },
+    "interpolation": {
+      "syntax": "Use {nodeId.answer} to insert the employee's prior answer from that node.",
+      "dominants": "Use {axis1.dominant}, {axis2.dominant}, {axis3.dominant} to insert the human-readable label for the leading pole of each axis.",
+      "dominantLabels": {
+        "axis1": {
+          "internal": "agency — seeing your hand in how today unfolded",
+          "external": "circumstance — feeling that today happened to you"
+        },
+        "axis2": {
+          "contribution": "giving — what you put out, regardless of return",
+          "entitlement": "tracking — what you were owed and whether it arrived"
+        },
+        "axis3": {
+          "altrocentric": "others — the people around you were in your frame",
+          "selfcentric": "self — your frame was mostly your own situation"
+        }
+      }
+    },
+    "routing": {
+      "answer_match": "Routes based on whether the employee's answer at a specific node matches one of the listed values.",
+      "signal_dominant": "Routes based on which pole has accumulated more signal tallies for the given axis. On a tie, the first matching condition wins.",
+      "default": "Fallback route — used as the final condition when no other condition matches."
+    }
+  },
+
+  "initialState": {
+    "axis1": { "internal": 0, "external": 0 },
+    "axis2": { "contribution": 0, "entitlement": 0 },
+    "axis3": { "altrocentric": 0, "selfcentric": 0 },
+    "answers": {}
+  },
+
+  "entryNode": "START",
+
+  "nodes": [
+
+    {
+      "id": "START",
+      "type": "start",
+      "text": "Good evening. Take a breath — the day is behind you now.\n\nThis is just a few minutes to look back at it honestly. Not to grade yourself. Not to fix anything tonight. Just to understand what actually happened, and how you showed up in it.",
+      "nextNode": "A1_OPEN"
+    },
+
+    {
+      "id": "A1_OPEN",
+      "type": "question",
+      "axis": 1,
+      "text": "How would you describe today in a single word?",
+      "options": [
+        { "label": "Productive", "signal": "axis1:internal" },
+        { "label": "Tough",      "signal": "axis1:external" },
+        { "label": "Mixed",      "signal": null },
+        { "label": "Frustrating","signal": "axis1:external" },
+        { "label": "Overwhelming","signal": "axis1:external" }
+      ],
+      "nextNode": "A1_D1"
+    },
+
+    {
+      "id": "A1_D1",
+      "type": "decision",
+      "axis": 1,
+      "routing": [
+        {
+          "condition": {
+            "type": "answer_match",
+            "nodeId": "A1_OPEN",
+            "values": ["Productive", "Mixed"]
+          },
+          "target": "A1_Q1_HIGH"
+        },
+        {
+          "condition": { "type": "default" },
+          "target": "A1_Q1_LOW"
+        }
+      ]
+    },
+
+    {
+      "id": "A1_Q1_HIGH",
+      "type": "question",
+      "axis": 1,
+      "text": "You said \"{A1_OPEN.answer}\". When things went your way today, what do you think made that happen?",
+      "options": [
+        { "label": "I had prepared well and stayed focused throughout", "signal": "axis1:internal" },
+        { "label": "The team came through — we worked well together",    "signal": "axis1:internal" },
+        { "label": "I adapted when the original plan changed",           "signal": "axis1:internal" },
+        { "label": "Honestly, it was mostly timing and luck",            "signal": "axis1:external" }
+      ],
+      "nextNode": "A1_Q2_HIGH"
+    },
+
+    {
+      "id": "A1_Q2_HIGH",
+      "type": "question",
+      "axis": 1,
+      "text": "And when something didn't go as planned — was there a moment where you had a choice in how to respond?",
+      "options": [
+        { "label": "Yes — I made a deliberate call and owned it",                     "signal": "axis1:internal" },
+        { "label": "Yes — but I defaulted to my usual reaction without thinking",     "signal": "axis1:external" },
+        { "label": "I reacted in the moment — I'm not sure it felt like a choice",    "signal": "axis1:external" },
+        { "label": "I don't think I saw a choice point at the time",                  "signal": "axis1:external" }
+      ],
+      "nextNode": "A1_D3_H"
+    },
+
+    {
+      "id": "A1_D3_H",
+      "type": "decision",
+      "axis": 1,
+      "routing": [
+        {
+          "condition": {
+            "type": "signal_dominant",
+            "axis": "axis1",
+            "pole": "internal"
+          },
+          "target": "A1_R_INTERNAL"
+        },
+        {
+          "condition": { "type": "default" },
+          "target": "A1_R_EXTERNAL"
+        }
+      ]
+    },
+
+    {
+      "id": "A1_Q1_LOW",
+      "type": "question",
+      "axis": 1,
+      "text": "You said \"{A1_OPEN.answer}\". When things got heavy today, what was your first move?",
+      "options": [
+        { "label": "I looked for what I could still control",                           "signal": "axis1:internal" },
+        { "label": "I felt frustrated — at people, at circumstances, at the situation", "signal": "axis1:external" },
+        { "label": "I waited to see if things would resolve on their own",              "signal": "axis1:external" },
+        { "label": "I pushed ahead even though I wasn't sure how",                      "signal": "axis1:internal" }
+      ],
+      "nextNode": "A1_Q2_LOW"
+    },
+
+    {
+      "id": "A1_Q2_LOW",
+      "type": "question",
+      "axis": 1,
+      "text": "Looking back now — even at the hardest moment — was there a choice you made, even a small one?",
+      "options": [
+        { "label": "Yes — I can see it clearly now, even if I didn't recognise it then",     "signal": "axis1:internal" },
+        { "label": "I made a call, but I'm still not sure it felt like mine to make",        "signal": "axis1:internal" },
+        { "label": "I'm not sure I noticed a choice point at the time",                      "signal": "axis1:external" },
+        { "label": "It genuinely felt like there were no real options available to me",      "signal": "axis1:external" }
+      ],
+      "nextNode": "A1_D3_L"
+    },
+
+    {
+      "id": "A1_D3_L",
+      "type": "decision",
+      "axis": 1,
+      "routing": [
+        {
+          "condition": {
+            "type": "signal_dominant",
+            "axis": "axis1",
+            "pole": "internal"
+          },
+          "target": "A1_R_INTERNAL"
+        },
+        {
+          "condition": { "type": "default" },
+          "target": "A1_R_EXTERNAL"
+        }
+      ]
+    },
+
+    {
+      "id": "A1_R_INTERNAL",
+      "type": "reflection",
+      "axis": 1,
+      "text": "Today you stayed connected to your agency.\n\nNot control — nobody controls everything — but agency. The quiet recognition that you are not purely a passenger in your own day. Even when circumstances were difficult, some part of you kept looking for the next move. That's not a personality trait. It's a practice. And today you practiced it.",
+      "nextNode": "BRIDGE_1_2"
+    },
+
+    {
+      "id": "A1_R_EXTERNAL",
+      "type": "reflection",
+      "axis": 1,
+      "text": "Today pulled your attention outward — toward what others did, what circumstances allowed, what you were handed.\n\nThat's a very human response to a hard day. But here's the thing: somewhere in that sequence of events, you were making calls. Small ones. You chose what to say, what to do next, what to let pass. Tomorrow, see if you can catch one of those moments in real time — before the reaction, not after.",
+      "nextNode": "BRIDGE_1_2"
+    },
+
+    {
+      "id": "BRIDGE_1_2",
+      "type": "bridge",
+      "text": "Now let's move from how you handled today — to what you were actually oriented toward while doing it.",
+      "nextNode": "A2_OPEN"
+    },
+
+    {
+      "id": "A2_OPEN",
+      "type": "question",
+      "axis": 2,
+      "text": "Think about your energy during the workday. Which of these feels most honest about where your focus was?",
+      "options": [
+        { "label": "I was focused on getting my own work done well",                         "signal": "axis2:entitlement" },
+        { "label": "I actively looked for ways to help beyond what was asked of me",         "signal": "axis2:contribution" },
+        { "label": "I felt my efforts deserved more recognition than they got",              "signal": "axis2:entitlement" },
+        { "label": "I put real energy into someone else's success or progress today",        "signal": "axis2:contribution" }
+      ],
+      "nextNode": "A2_D1"
+    },
+
+    {
+      "id": "A2_D1",
+      "type": "decision",
+      "axis": 2,
+      "routing": [
+        {
+          "condition": {
+            "type": "signal_dominant",
+            "axis": "axis2",
+            "pole": "contribution"
+          },
+          "target": "A2_Q1_CONTRIB"
+        },
+        {
+          "condition": { "type": "default" },
+          "target": "A2_Q1_ENTITLE"
+        }
+      ]
+    },
+
+    {
+      "id": "A2_Q1_CONTRIB",
+      "type": "question",
+      "axis": 2,
+      "text": "You contributed something today. What was the honest driver behind it?",
+      "options": [
+        { "label": "It was simply the right thing to do",                             "signal": "axis2:contribution" },
+        { "label": "I noticed someone was struggling and couldn't walk past it",      "signal": "axis2:contribution" },
+        { "label": "I knew it would reflect well on me",                              "signal": "axis2:entitlement" },
+        { "label": "Helping others is just part of how I tend to approach work",      "signal": "axis2:contribution" }
+      ],
+      "nextNode": "A2_Q2"
+    },
+
+    {
+      "id": "A2_Q1_ENTITLE",
+      "type": "question",
+      "axis": 2,
+      "text": "When recognition didn't come today, what happened to your effort?",
+      "options": [
+        { "label": "I kept going — the work matters regardless of acknowledgment",        "signal": "axis2:contribution" },
+        { "label": "My motivation dipped a bit, I won't pretend otherwise",               "signal": "axis2:entitlement" },
+        { "label": "I started wondering whether the effort was actually worth it",        "signal": "axis2:entitlement" },
+        { "label": "I reminded myself that credit isn't really the point",                "signal": "axis2:contribution" }
+      ],
+      "nextNode": "A2_Q2"
+    },
+
+    {
+      "id": "A2_Q2",
+      "type": "question",
+      "axis": 2,
+      "text": "At the end of this day, what's the thing you'll actually carry with you?",
+      "options": [
+        { "label": "Something I accomplished — a personal win",                                    "signal": "axis2:entitlement" },
+        { "label": "A moment where I made someone else's day meaningfully easier",                 "signal": "axis2:contribution" },
+        { "label": "Something the team pulled off together that I was part of",                    "signal": "axis2:contribution" },
+        { "label": "Something that went unacknowledged despite the effort I put in",               "signal": "axis2:entitlement" }
+      ],
+      "nextNode": "A2_D3"
+    },
+
+    {
+      "id": "A2_D3",
+      "type": "decision",
+      "axis": 2,
+      "routing": [
+        {
+          "condition": {
+            "type": "signal_dominant",
+            "axis": "axis2",
+            "pole": "contribution"
+          },
+          "target": "A2_R_CONTRIB"
+        },
+        {
+          "condition": { "type": "default" },
+          "target": "A2_R_ENTITLE"
+        }
+      ]
+    },
+
+    {
+      "id": "A2_R_CONTRIB",
+      "type": "reflection",
+      "axis": 2,
+      "text": "Today you oriented outward — toward what you could give rather than what you were owed.\n\nThat's not selflessness for its own sake. It's the orientation that tends to make work feel meaningful rather than transactional. You didn't just do your job today. You added something to someone else's experience of theirs. That's worth noting.",
+      "nextNode": "BRIDGE_2_3"
+    },
+
+    {
+      "id": "A2_R_ENTITLE",
+      "type": "reflection",
+      "axis": 2,
+      "text": "Today some of your attention went toward tracking what you deserved — recognition, credit, a fair return on effort.\n\nThat feeling is real and worth acknowledging, not dismissed. But here's the question worth sitting with tonight: setting all of that aside — what did you actually give today? Not what came back. What went out. Even something small counts.",
+      "nextNode": "BRIDGE_2_3"
+    },
+
+    {
+      "id": "BRIDGE_2_3",
+      "type": "bridge",
+      "text": "One final shift — from what you gave today, to who was actually in your frame when you were giving it.",
+      "nextNode": "A3_OPEN"
+    },
+
+    {
+      "id": "A3_OPEN",
+      "type": "question",
+      "axis": 3,
+      "text": "When you picture today's most significant moment, who else is in the frame with you?",
+      "options": [
+        { "label": "Just me — it was mine to handle alone",                               "signal": "axis3:selfcentric" },
+        { "label": "My immediate team — we were all in it together",                      "signal": "axis3:altrocentric" },
+        { "label": "A specific colleague I was conscious of throughout the day",          "signal": "axis3:altrocentric" },
+        { "label": "The people we ultimately serve — end users, customers, stakeholders", "signal": "axis3:altrocentric" }
+      ],
+      "nextNode": "A3_D1"
+    },
+
+    {
+      "id": "A3_D1",
+      "type": "decision",
+      "axis": 3,
+      "routing": [
+        {
+          "condition": {
+            "type": "signal_dominant",
+            "axis": "axis3",
+            "pole": "selfcentric"
+          },
+          "target": "A3_Q1_NARROW"
+        },
+        {
+          "condition": { "type": "default" },
+          "target": "A3_Q1_WIDE"
+        }
+      ]
+    },
+
+    {
+      "id": "A3_Q1_NARROW",
+      "type": "question",
+      "axis": 3,
+      "text": "When you were under pressure today, what helped you most?",
+      "options": [
+        { "label": "Focusing on what I personally needed to get through it",              "signal": "axis3:selfcentric" },
+        { "label": "Remembering that the team needed me to be functioning",               "signal": "axis3:altrocentric" },
+        { "label": "Thinking about what the outcome meant for someone else",              "signal": "axis3:altrocentric" },
+        { "label": "Taking space to reset on my own terms",                               "signal": "axis3:selfcentric" }
+      ],
+      "nextNode": "A3_Q2"
+    },
+
+    {
+      "id": "A3_Q1_WIDE",
+      "type": "question",
+      "axis": 3,
+      "text": "When you were thinking about others today, what did you actually do with that awareness?",
+      "options": [
+        { "label": "I checked in with someone who seemed to be struggling",              "signal": "axis3:altrocentric" },
+        { "label": "I adjusted what I was doing to make their work easier",              "signal": "axis3:altrocentric" },
+        { "label": "I noticed but didn't end up acting on it",                           "signal": "axis3:selfcentric" },
+        { "label": "I felt connected to the larger purpose we're all working toward",    "signal": "axis3:altrocentric" }
+      ],
+      "nextNode": "A3_Q2"
+    },
+
+    {
+      "id": "A3_Q2",
+      "type": "question",
+      "axis": 3,
+      "text": "How would the person you most want to become describe the way you showed up today?",
+      "options": [
+        { "label": "Capable and heads-down — mostly focused on their own work",                    "signal": "axis3:selfcentric" },
+        { "label": "Present and genuinely connected to the people around them",                    "signal": "axis3:altrocentric" },
+        { "label": "Someone who quietly made things better for at least one other person",         "signal": "axis3:altrocentric" },
+        { "label": "Someone who played for the bigger purpose, not just the immediate task",       "signal": "axis3:altrocentric" }
+      ],
+      "nextNode": "A3_D3"
+    },
+
+    {
+      "id": "A3_D3",
+      "type": "decision",
+      "axis": 3,
+      "routing": [
+        {
+          "condition": {
+            "type": "signal_dominant",
+            "axis": "axis3",
+            "pole": "altrocentric"
+          },
+          "target": "A3_R_ALTO"
+        },
+        {
+          "condition": { "type": "default" },
+          "target": "A3_R_SELF"
+        }
+      ]
+    },
+
+    {
+      "id": "A3_R_ALTO",
+      "type": "reflection",
+      "axis": 3,
+      "text": "Today your frame extended beyond yourself — toward specific people, toward the team, toward something larger than your own task list.\n\nThat kind of orientation doesn't make the hard parts of the job easier. But it does tend to make them more worth doing. The meaning in work rarely lives inside a single task. It lives in the connection between your effort and someone else's experience of it.",
+      "nextNode": "SUMMARY"
+    },
+
+    {
+      "id": "A3_R_SELF",
+      "type": "reflection",
+      "axis": 3,
+      "text": "Today your frame was tight — mostly yourself, your situation, your pressure.\n\nThat's not a character flaw. It's often just what survival mode looks like when the day is genuinely hard. But try something small tomorrow: pick one person before 10am and notice how they're actually doing. Not to fix anything. Just to notice. That small act of attention changes the radius — without costing much.",
+      "nextNode": "SUMMARY"
+    },
+
+    {
+      "id": "SUMMARY",
+      "type": "summary",
+      "text": "Here's what today looked like, reflected back.\n\nOn agency, you leaned toward {axis1.dominant}.\nOn orientation, you leaned toward {axis2.dominant}.\nOn radius, you leaned toward {axis3.dominant}.\n\nYou opened by describing today as \"{A1_OPEN.answer}\". Sit with that word for a moment. In light of everything you just named — does it still fit exactly? Or is there a more precise word now?\n\nNothing about today is fixed. The fact that you looked back at it honestly is already something.",
+      "nextNode": "END"
+    },
+
+    {
+      "id": "END",
+      "type": "end",
+      "text": "That's it for tonight. Rest well. Same time tomorrow.",
+      "nextNode": null
+    }
+
+  ]
+}
